@@ -1,24 +1,25 @@
 import 'package:flutter/material.dart';
 import '../models/tourist_place.dart';
-import 'category_details_screen.dart';
+import '../data/translations.dart';
+import 'category_details_screen.dart'; // it's still named category_details_screen.dart but contains CategoryPlacesScreen class
 
 class CategoriesPage extends StatelessWidget {
   const CategoriesPage({super.key});
 
-  final List<Map<String, dynamic>> _categories = const [
-    {'name': '🏛️ Lieux touristiques', 'icon': Icons.account_balance, 'type': PlaceCategory.touristPlaces, 'color': Colors.blue},
-    {'name': '🍽️ Restaurants', 'icon': Icons.restaurant, 'type': PlaceCategory.restaurants, 'color': Colors.orange},
-    {'name': '🏨 Hôtels', 'icon': Icons.hotel, 'type': PlaceCategory.hotels, 'color': Colors.purple},
-    {'name': '🛍️ Marchés', 'icon': Icons.storefront, 'type': PlaceCategory.markets, 'color': Colors.green},
-    {'name': '🎯 Activités et loisirs', 'icon': Icons.local_activity, 'type': PlaceCategory.activitiesAndEntertainment, 'color': Colors.red},
-    {'name': '🚕 Services', 'icon': Icons.local_taxi, 'type': PlaceCategory.services, 'color': Colors.teal},
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final List<Map<String, dynamic>> categories = [
+      {'nameKey': 'tourist_places', 'icon': Icons.account_balance, 'type': PlaceCategory.touristPlaces, 'color': Colors.blue},
+      {'nameKey': 'restaurants', 'icon': Icons.restaurant, 'type': PlaceCategory.restaurants, 'color': Colors.orange},
+      {'nameKey': 'hotels', 'icon': Icons.hotel, 'type': PlaceCategory.hotels, 'color': Colors.purple},
+      {'nameKey': 'markets', 'icon': Icons.storefront, 'type': PlaceCategory.markets, 'color': Colors.green},
+      {'nameKey': 'activities', 'icon': Icons.local_activity, 'type': PlaceCategory.activitiesAndEntertainment, 'color': Colors.red},
+      {'nameKey': 'services', 'icon': Icons.local_taxi, 'type': PlaceCategory.services, 'color': Colors.teal},
+    ];
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Catégories', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(context.translate('categories'), style: const TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: GridView.builder(
@@ -29,16 +30,17 @@ class CategoriesPage extends StatelessWidget {
           mainAxisSpacing: 16.0,
           childAspectRatio: 0.9,
         ),
-        itemCount: _categories.length,
+        itemCount: categories.length,
         itemBuilder: (context, index) {
-          final cat = _categories[index];
+          final cat = categories[index];
+          final translatedName = context.translate(cat['nameKey'] as String);
           return InkWell(
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => CategoryDetailsScreen(
-                    categoryName: cat['name'] as String,
+                  builder: (context) => CategoryPlacesScreen(
+                    categoryName: translatedName,
                     categoryType: cat['type'] as PlaceCategory,
                   ),
                 ),
@@ -72,7 +74,7 @@ class CategoriesPage extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8.0),
                     child: Text(
-                      cat['name'] as String,
+                      translatedName,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: Colors.white,
@@ -90,3 +92,4 @@ class CategoriesPage extends StatelessWidget {
     );
   }
 }
+

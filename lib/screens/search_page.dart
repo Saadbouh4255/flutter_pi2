@@ -1,7 +1,8 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import '../main.dart';
 import '../models/tourist_place.dart';
+import '../data/translations.dart';
+import 'place_details_screen.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -19,7 +20,7 @@ class _SearchPageState extends State<SearchPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Recherche de lieux', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(context.translate('search'), style: const TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: Column(
@@ -28,7 +29,7 @@ class _SearchPageState extends State<SearchPage> {
             padding: const EdgeInsets.all(16.0),
             child: TextField(
               decoration: InputDecoration(
-                hintText: 'Rechercher par mot-clé...',
+                hintText: context.translate('search_places'),
                 prefixIcon: const Icon(Icons.search, color: Colors.teal),
                 filled: true,
                 fillColor: Colors.grey[100],
@@ -57,24 +58,24 @@ class _SearchPageState extends State<SearchPage> {
                     : appState.searchPlaces(_searchQuery);
 
                 if (_searchQuery.isNotEmpty && places.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.search_off, size: 64, color: Colors.grey),
-                        SizedBox(height: 16),
-                        Text('Aucun lieu correspondant trouvé.', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                        const Icon(Icons.search_off, size: 64, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        Text(context.translate('no_results'), style: const TextStyle(fontSize: 18, color: Colors.grey)),
                       ],
                     ),
                   );
                 } else if (_searchQuery.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.travel_explore, size: 64, color: Colors.grey),
-                        SizedBox(height: 16),
-                        Text('Commencez à taper pour rechercher...', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                        const Icon(Icons.travel_explore, size: 64, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        Text(context.translate('search_places'), style: const TextStyle(fontSize: 18, color: Colors.grey)),
                       ],
                     ),
                   );
@@ -90,43 +91,53 @@ class _SearchPageState extends State<SearchPage> {
                       elevation: 4,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       clipBehavior: Clip.antiAlias,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                           Stack(
-                             children: [
-                               place.buildImage(height: 200, width: double.infinity, fit: BoxFit.cover),
-                              Positioned(
-                                top: 16,
-                                right: 16,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: place.category.color.withOpacity(0.9),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    place.category.displayName,
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => PlaceDetailsScreen(place: place),
+                            ),
+                          );
+                        },
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                             Stack(
+                               children: [
+                                 place.buildImage(height: 200, width: double.infinity, fit: BoxFit.cover),
+                                Positioned(
+                                  top: 16,
+                                  right: 16,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: place.category.color.withOpacity(0.9),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      context.translate(place.category.name), // will use translated name if added to map or fallback
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                    ),
                                   ),
                                 ),
+                               ],
+                             ),
+                            Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (place.name.isNotEmpty)
+                                    Text(context.translate(place.name), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                                  if (place.name.isNotEmpty)
+                                    const SizedBox(height: 8),
+                                  Text(context.translate(place.description), style: const TextStyle(fontSize: 16, height: 1.5), maxLines: 3, overflow: TextOverflow.ellipsis),
+                                ],
                               ),
-                             ],
-                           ),
-                          Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (place.name.isNotEmpty)
-                                  Text(place.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                                if (place.name.isNotEmpty)
-                                  const SizedBox(height: 8),
-                                Text(place.description, style: const TextStyle(fontSize: 16, height: 1.5)),
-                              ],
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -139,3 +150,4 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 }
+

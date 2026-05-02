@@ -1,25 +1,76 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/tourist_place.dart';
+import 'db_helper.dart';
+import 'translations.dart';
+
+List<TouristPlace> _parsePlaces(List<int> responseBytes) {
+  try {
+    final decodedData = json.decode(utf8.decode(responseBytes, allowMalformed: true));
+    final List<dynamic> data = decodedData is List ? decodedData : (decodedData['places'] ?? []);
+    final List<TouristPlace> parsed = [];
+    for (var item in data) {
+      try {
+        parsed.add(TouristPlace.fromJson(item as Map<String, dynamic>));
+      } catch (e) {
+        // Ignore individual parsing errors
+      }
+    }
+    return parsed;
+  } catch (e) {
+    return [];
+  }
+}
 
 class AppState extends ChangeNotifier {
   List<TouristPlace> _places = [];
   Timer? _timer;
+  bool _isOffline = false;
+  bool _isLoading = true;
+  final LocalizationProvider localization = LocalizationProvider();
 
   List<TouristPlace> get places => _places;
+  bool get isOffline => _isOffline;
+  bool get isLoading => _isLoading;
 
   AppState() {
-    fetchPlaces();
-    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    localization.addListener(notifyListeners);
+    _initData();
+  }
+
+  Future<void> _initData() async {
+    // First, load from local DB so app opens instantly with data
+    await loadFromLocalDb();
+    
+    // Then fetch from network
+    await fetchPlaces();
+
+    // Setup periodic sync
+    _timer = Timer.periodic(const Duration(seconds: 15), (timer) {
       fetchPlaces();
     });
+  }
+
+  Future<void> loadFromLocalDb() async {
+    try {
+      final localPlaces = await DbHelper.instance.getAllPlaces();
+      if (localPlaces.isNotEmpty) {
+        _places = localPlaces;
+        _isLoading = false;
+        notifyListeners();
+      }
+    } catch (e) {
+      print("Error loading from local DB: $e");
+    }
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    localization.removeListener(notifyListeners);
+    localization.dispose();
     super.dispose();
   }
 
@@ -27,31 +78,36 @@ class AppState extends ChangeNotifier {
 
   Future<void> fetchPlaces() async {
     try {
-      final response = await http.get(Uri.parse('https://nouakchott-backend-3.onrender.com/api/places'));
+      final response = await http.get(Uri.parse('https://nouakchott-backend-1-7hhh.onrender.com/api/places')).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         if (_lastResponseBody == response.body) {
-          return; // No changes, skip rebuilding UI
+          _isOffline = false;
+          notifyListeners();
+          return; // No changes
         }
         _lastResponseBody = response.body;
 
-        final dynamic decodedData = json.decode(response.body);
-        final List<dynamic> data = decodedData is List ? decodedData : (decodedData['places'] ?? []);
+        // Parse directly on main thread because Web Worker serialization overhead is too slow
+        final parsed = _parsePlaces(response.bodyBytes);
         
-        final List<TouristPlace> parsed = [];
-        for (var item in data) {
-          try {
-            parsed.add(TouristPlace.fromJson(item as Map<String, dynamic>));
-          } catch (e) {
-            print('Failed to parse place: $e');
-          }
-        }
         _places = parsed;
+        _isOffline = false;
+        _isLoading = false;
+        
+        // Save to SQLite
+        await DbHelper.instance.insertPlaces(parsed);
+        
         notifyListeners();
       } else {
-        print('Failed to load places: ${response.statusCode}');
+        _isOffline = true;
+        _isLoading = false;
+        notifyListeners();
       }
     } catch (e) {
-      print('Error loading places: $e');
+      print('Error fetching places: $e');
+      _isOffline = true;
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
@@ -62,8 +118,11 @@ class AppState extends ChangeNotifier {
   List<TouristPlace> searchPlaces(String query) {
     final lowerQuery = query.toLowerCase();
     return _places.where((p) {
-      return p.name.toLowerCase().contains(lowerQuery) || 
-             p.description.toLowerCase().contains(lowerQuery);
+      final translatedName = localization.translate(p.name).toLowerCase();
+      final translatedDesc = localization.translate(p.description).toLowerCase();
+      return translatedName.contains(lowerQuery) || 
+             translatedDesc.contains(lowerQuery);
     }).toList();
   }
 }
+
